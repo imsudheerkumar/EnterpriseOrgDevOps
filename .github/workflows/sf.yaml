@@ -50,9 +50,9 @@ jobs:
       # Authenticate with Salesforce
       - name: Authenticate Salesforce
         env:
-          SFDX_AUTH_URL: ${{ secrets.SFDX_AUTH_URL }}
+          SFDX_AUTH_URL_VALUE: ${{ secrets.SFDX_AUTH_URL_VALUE }}
         run: |
-          echo "$SFDX_AUTH_URL" | sf org login sfdx-url --sfdx-url-stdin --set-default --alias TRAIL_PROD_ORG
+          echo "$SFDX_AUTH_URL_VALUE" | sf org login sfdx-url --sfdx-url-stdin --set-default --alias TRAIL_PROD_ORG
 
       # Verify Salesforce Org Information
       - name: Verify Salesforce Org is Authenticated
