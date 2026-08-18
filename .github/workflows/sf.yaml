@@ -46,3 +46,15 @@ jobs:
       - name: Install Code Analyzer
         run: |
           sf plugins install code-analyzer
+
+      # Authenticate with Salesforce
+      - name: Authenticate Salesforce
+        env:
+          SFDX_AUTH_URL: ${{ secrets.SFDX_AUTH_URL }}
+        run: |
+          echo "$SFDX_AUTH_URL" | sf org login sfdx-url --sfdx-url-stdin --set-default --alias TRAIL_PROD_ORG
+
+      # Verify Salesforce Org Information
+      - name: Verify Salesforce Org is Authenticated
+        run: |
+          sf org display --json
