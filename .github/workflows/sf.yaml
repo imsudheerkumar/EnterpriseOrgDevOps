@@ -11,26 +11,38 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: GitHub Script
-        uses: actions/github-script@v9.0.0
+
+      # Checkout repository
+      - name: Checkout Repository
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          script: |
-            console.log(github.context.payload.repository.clone_url);
-            console.log(github.context.payload.repository.ssh_url);
-            console.log(github.context.payload.repository.git_url);
-            console.log(github.context.payload.repository.svn_url);
-            console.log(github.context.payload.repository.html_url);
-            console.log(github.context.payload.repository.owner);
-            console.log(github.context.payload.repository.name);
-            console.log(github.context.payload.repository.full_name);
 
-      - name: Installing Salesforce CLI
+      # Print GitHub Repository Information
+      - name: GitHub Script
+        uses: actions/github-script@v9
+        with:
+          script: |
+            console.log("Clone URL:", context.payload.repository.clone_url);
+            console.log("SSH URL:", context.payload.repository.ssh_url);
+            console.log("Git URL:", context.payload.repository.git_url);
+            console.log("SVN URL:", context.payload.repository.svn_url);
+            console.log("HTML URL:", context.payload.repository.html_url);
+            console.log("Owner:", context.payload.repository.owner.login);
+            console.log("Repository:", context.payload.repository.name);
+            console.log("Full Name:", context.payload.repository.full_name);
+
+      # Install Salesforce CLI
+      - name: Install Salesforce CLI
         run: |
-          npm install --global @salesforce-cli/cli@latest
+          npm install --global @salesforce/cli@latest
+
+      # Check Salesforce CLI Version
       - name: Check Salesforce CLI Version
         run: |
           sf --version
+
+      # Install Salesforce Code Analyzer
       - name: Install Code Analyzer
         run: |
           sf plugins install code-analyzer
