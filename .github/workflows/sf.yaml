@@ -1,0 +1,60 @@
+name: Salesforce CI Pipeline
+
+run-name: "Salesforce CI Pipeline Running"
+
+on:
+  push:
+
+jobs:
+  setup-salesforce:
+    name: Setup Salesforce
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # Checkout repository
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Print GitHub Repository Information
+      - name: GitHub Script
+        uses: actions/github-script@v9
+        with:
+          script: |
+            console.log("Clone URL:", context.payload.repository.clone_url);
+            console.log("SSH URL:", context.payload.repository.ssh_url);
+            console.log("Git URL:", context.payload.repository.git_url);
+            console.log("SVN URL:", context.payload.repository.svn_url);
+            console.log("HTML URL:", context.payload.repository.html_url);
+            console.log("Owner:", context.payload.repository.owner.login);
+            console.log("Repository:", context.payload.repository.name);
+            console.log("Full Name:", context.payload.repository.full_name);
+
+      # Install Salesforce CLI
+      - name: Install Salesforce CLI
+        run: |
+          npm install --global @salesforce/cli@latest
+
+      # Check Salesforce CLI Version
+      - name: Check Salesforce CLI Version
+        run: |
+          sf --version
+
+      # Install Salesforce Code Analyzer
+      - name: Install Code Analyzer
+        run: |
+          sf plugins install code-analyzer
+
+      # Authenticate with Salesforce
+      - name: Authenticate Salesforce
+        env:
+          SFDX_AUTH_URL_VALUE: ${{ secrets.SFDX_AUTH_URL_VALUE }}
+        run: |
+          echo "$SFDX_AUTH_URL_VALUE" | sf org login sfdx-url --sfdx-url-stdin --set-default --alias TRAIL_PROD_ORG
+
+      # Verify Salesforce Org Information
+      - name: Verify Salesforce Org is Authenticated
+        run: |
+          sf org display --target-org TRAIL_PROD_ORG --json
