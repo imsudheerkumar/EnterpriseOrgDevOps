@@ -57,4 +57,4 @@ jobs:
       # Verify Salesforce Org Information
       - name: Verify Salesforce Org is Authenticated
         run: |
-          sf org display --json
+          sf org display --verbose
