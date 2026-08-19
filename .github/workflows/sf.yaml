@@ -64,7 +64,7 @@ jobs:
         run: |
           sf project deploy start --source-dir force-app/main/default/ --target-org TRAIL_PROD_ORG 
 
-      # Assign Permission Sets
-      - name: Assign Permission Sets
+      # Assign Permission Set
+      - name: Assign Permission Set
         run: |
           sf org assign permset --permsetname Onboarding_Manager --on-behalf-of-user enterpriseorg@sopra.com --target-org TRAIL_PROD_ORG
