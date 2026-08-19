@@ -239,7 +239,7 @@ export default class OnboardingRequestForm extends NavigationMixin(LightningElem
             // reportingManagerId and buddyId require real User IDs — left for manual selection
         } catch (err) {
             this.errorMessage =
-                'Could not load demo data. Ensure "randomuser.me" is added to CSP Trusted Sites in Setup.';
+                'Could not load demo data. Ensure "randomuser.me" is added to CSP Trusted Sites in Setup. '+err.message;
         } finally {
             this.prefillLoading = false;
         }
