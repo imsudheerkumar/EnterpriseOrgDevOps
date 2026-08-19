@@ -67,4 +67,4 @@ jobs:
       # Assign Permission Sets
       - name: Assign Permission Sets
         run: |
-          sf org assign permset --permsetname Onboarding_Manager --on-behalf-of-user TRAIL_PROD_ORG --target-org TRAIL_PROD_ORG
+          sf org assign permset --permsetname Onboarding_Manager --on-behalf-of-user enterpriseorg@sopra.com --target-org TRAIL_PROD_ORG
