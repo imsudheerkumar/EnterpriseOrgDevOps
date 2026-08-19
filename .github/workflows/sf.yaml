@@ -58,3 +58,13 @@ jobs:
       - name: Verify Salesforce Org is Authenticated
         run: |
           sf org display --target-org TRAIL_PROD_ORG --json
+
+      # Deploy Salesforce Metadata
+      - name: Deploy Salesforce Metadata
+        run: |
+          sf project deploy start --source-dir force-app/main/default/ --target-org TRAIL_PROD_ORG 
+
+      # Assign Permission Sets
+      - name: Assign Permission Sets
+        run: |
+          sf org assign permset --permsetname Onboarding_Manager --on-behalf-of-user TRAIL_PROD_ORG --target-org TRAIL_PROD_ORG
