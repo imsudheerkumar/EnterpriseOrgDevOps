@@ -69,7 +69,7 @@ jobs:
         with:
           run-arguments: --workspace . --view detail --output-file sfca_results.html --output-file sfca_results.json
           results-artifact-name: salesforce-code-analyzer-results
-          github-token: ${{ github.token }
+          github-token: ${{ github.token }}
 
       # Authenticate with Salesforce
       - name: Authenticate Salesforce
