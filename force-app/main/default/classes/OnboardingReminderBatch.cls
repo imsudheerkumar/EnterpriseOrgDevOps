@@ -8,8 +8,8 @@
  *              Each batch chunk is a separate transaction with its own email allowance.
  *              Implements Database.Stateful so the total processed count is preserved
  *              across chunks and visible in the finish() debug log.
- *   Execute manually via Anonymous Apex:
- *   Database.executeBatch(new OnboardingReminderBatch(), 50); asd
+ *   Execute manually via Anonymous Apex also
+ *   Database.executeBatch(new OnboardingReminderBatch(), 50);
  */
 public with sharing class OnboardingReminderBatch
         implements Database.Batchable<SObject>, Database.Stateful {
