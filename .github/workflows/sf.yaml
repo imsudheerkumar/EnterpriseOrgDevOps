@@ -79,14 +79,8 @@ jobs:
       # Decrypt the encrypted JWT key file
       - name: Decrypt the encrypted JWT key file
         run: |
-         openssl enc -nosalt -aes-256-cbc -d \
-         -in ${{secrets.ENCRYPTION_KEY_FILE}} \
-         -out ${{secrets.JWT_KEY_FILE}} \
-         -base64 \
-         -K ${{secrets.DECRYPTION_KEY}} \
-         -iv ${{secrets.DECRYPTION_IV}}
-
-        
+         openssl enc -nosalt -aes-256-cbc -d -in ${{secrets.ENCRYPTION_KEY_FILE}} -out ${{secrets.JWT_KEY_FILE}} -base64 -K ${{secrets.DECRYPTION_KEY}} -iv ${{secrets.DECRYPTION_IV}}
+       
       # Authenticate with Salesforce
       - name: Authenticate Salesforce with JWT
         run: |

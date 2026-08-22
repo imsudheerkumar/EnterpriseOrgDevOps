@@ -10,10 +10,6 @@
  *              across chunks and visible in the finish() debug log.
  *   Execute manually via Anonymous Apex:
  *   Database.executeBatch(new OnboardingReminderBatch(), 50);
- *   -- Alternatively, schedule the batch job with a cron expression:
- *   System.schedule('OnboardingReminderBatch', '0 0 * * * ?', new OnboardingReminderBatch());
- *   -- Alternatively, run the batch job via the Salesforce CLI:
- *   sf run batch OnboardingReminderBatch -d 3 -s 50    
  */
 public with sharing class OnboardingReminderBatch
         implements Database.Batchable<SObject>, Database.Stateful {
