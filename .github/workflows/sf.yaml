@@ -36,6 +36,7 @@ jobs:
       JAVA_VERSION: '>=11'
       PYTHON_VERSION: '>=3.10'
       SFCLI_VERSION: latest
+      TRAIL_PROD_ORG: ${{ vars.PROD_ORG }}
 
     steps:
 
@@ -99,12 +100,12 @@ jobs:
         env:
           SFDX_AUTH_URL_VALUE: ${{ env.SFDX_AUTH_URL_VALUE }}
         run: |
-          echo "$SFDX_AUTH_URL_VALUE" | sf org login sfdx-url --sfdx-url-stdin --set-default --alias TRAIL_PROD_ORG
+          echo "$SFDX_AUTH_URL_VALUE" | sf org login sfdx-url --sfdx-url-stdin --set-default --alias ${{ env.TRAIL_PROD_ORG }}
 
       # Verify Salesforce Org Information
       - name: Verify Salesforce Org is Authenticated
         run: |
-          sf org display --target-org TRAIL_PROD_ORG --json
+          sf org display --target-org ${{ env.TRAIL_PROD_ORG }} --json
 
       # Deploy Salesforce Metadata
       - name: Deploy Salesforce Metadata
