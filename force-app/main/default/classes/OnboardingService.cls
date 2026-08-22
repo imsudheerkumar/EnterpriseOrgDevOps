@@ -1,0 +1,429 @@
+/**
+ * @description Core service class for Employee Onboarding business logic.
+ *              Called by trigger handlers and LWC controllers.
+ *              Follows the service layer pattern — all DML happens here, not in handlers.
+ */
+public with sharing class OnboardingService {
+
+    // ─── Default Tasks ────────────────────────────────────────────────────────
+
+    /**
+     * @description Creates 4 standard onboarding tasks for each newly inserted
+     *              Onboarding Request. Called from OnboardingRequestTriggerHandler.
+     * @param requests List of newly inserted Onboarding_Request__c records
+     */
+    public static void createDefaultTasks(List<Onboarding_Request__c> requests) {
+        List<Onboarding_Task_Template__mdt> templates = [
+            SELECT Task_Name__c, Category__c, Days_Offset__c, Department__c
+            FROM   Onboarding_Task_Template__mdt
+            ORDER BY Days_Offset__c ASC NULLS LAST
+        ];
+
+        if (templates.isEmpty()) return;
+
+        List<Onboarding_Task__c> tasksToInsert = new List<Onboarding_Task__c>();
+
+        for (Onboarding_Request__c req : requests) {
+            for (Onboarding_Task_Template__mdt tmpl : templates) {
+                // Skip department-specific templates that don't match this request's department
+                if (String.isNotBlank(tmpl.Department__c) && tmpl.Department__c != req.Department__c) {
+                    continue;
+                }
+                Integer offset = tmpl.Days_Offset__c != null ? Integer.valueOf(tmpl.Days_Offset__c) : 0;
+                tasksToInsert.add(buildTask(req.Id, tmpl.Task_Name__c, tmpl.Category__c,
+                                            req.Start_Date__c.addDays(offset)));
+            }
+        }
+
+        if (!tasksToInsert.isEmpty()) {
+            insert tasksToInsert;
+        }
+    }
+
+    private static Onboarding_Task__c buildTask(Id requestId, String name, String category, Date dueDate) {
+        return new Onboarding_Task__c(
+            Name                 = name,
+            Onboarding_Request__c = requestId,
+            Category__c          = category,
+            Due_Date__c          = dueDate,
+            Is_Completed__c      = false
+        );
+    }
+
+    // ─── Completion Percentage ────────────────────────────────────────────────
+
+    /**
+     * @description Recalculates Completion_Percentage__c on parent Onboarding_Request__c
+     *              records after tasks are updated. Called from OnboardingTaskTriggerHandler.
+     * @param updatedTasks List of updated Onboarding_Task__c records
+     */
+    public static void recalculateCompletion(List<Onboarding_Task__c> updatedTasks) {
+        Set<Id> requestIds = new Set<Id>();
+        for (Onboarding_Task__c task : updatedTasks) {
+            requestIds.add(task.Onboarding_Request__c);
+        }
+
+        // Query all tasks grouped by parent request.
+        // A task counts as "done" if it is completed OR rejected.
+        Map<Id, List<Onboarding_Task__c>> tasksByRequest = new Map<Id, List<Onboarding_Task__c>>();
+        for (Onboarding_Task__c task : [
+            SELECT Id, Onboarding_Request__c, Is_Completed__c, Is_Rejected__c
+            FROM   Onboarding_Task__c
+            WHERE  Onboarding_Request__c IN :requestIds
+        ]) {
+            if (!tasksByRequest.containsKey(task.Onboarding_Request__c)) {
+                tasksByRequest.put(task.Onboarding_Request__c, new List<Onboarding_Task__c>());
+            }
+            tasksByRequest.get(task.Onboarding_Request__c).add(task);
+        }
+
+        List<Onboarding_Request__c> requestsToUpdate = new List<Onboarding_Request__c>();
+        for (Id reqId : tasksByRequest.keySet()) {
+            List<Onboarding_Task__c> tasks = tasksByRequest.get(reqId);
+            Integer total = tasks.size();
+            Integer done  = 0;
+            for (Onboarding_Task__c t : tasks) {
+                if (t.Is_Completed__c || t.Is_Rejected__c) done++;
+            }
+
+            Integer pct       = (total > 0) ? (Integer)((done * 100) / total) : 0;
+            String  newStatus = (pct == 100) ? 'Completed' : (pct > 0 ? 'In Progress' : 'New');
+
+            requestsToUpdate.add(new Onboarding_Request__c(
+                Id                       = reqId,
+                Completion_Percentage__c = pct,
+                Status__c                = newStatus
+            ));
+        }
+
+        if (!requestsToUpdate.isEmpty()) {
+            update requestsToUpdate;
+        }
+    }
+
+    // ─── Completion Validation ────────────────────────────────────────────────
+
+    /**
+     * @description BEFORE_UPDATE guard: prevents Status__c from being set to
+     *              'Completed' if any tasks remain open (not completed, not rejected).
+     *              Called by OnboardingRequestTriggerHandler in BEFORE_UPDATE context.
+     * @param newList Trigger.new
+     * @param oldMap  Trigger.oldMap
+     */
+    public static void validateCompletion(
+        List<Onboarding_Request__c> newList,
+        Map<Id, Onboarding_Request__c> oldMap
+    ) {
+        Set<Id> completingIds = new Set<Id>();
+        for (Onboarding_Request__c req : newList) {
+            if (req.Status__c == 'Completed' && oldMap.get(req.Id).Status__c != 'Completed') {
+                completingIds.add(req.Id);
+            }
+        }
+        if (completingIds.isEmpty()) return;
+
+        // Count tasks that are neither completed nor rejected (i.e. still open)
+        Map<Id, Integer> openTaskCounts = new Map<Id, Integer>();
+        for (AggregateResult ar : [
+            SELECT Onboarding_Request__c reqId, COUNT(Id) cnt
+            FROM   Onboarding_Task__c
+            WHERE  Onboarding_Request__c IN :completingIds
+            AND    Is_Completed__c = false
+            AND    Is_Rejected__c  = false
+            GROUP BY Onboarding_Request__c
+        ]) {
+            openTaskCounts.put((Id) ar.get('reqId'), (Integer) ar.get('cnt'));
+        }
+
+        for (Onboarding_Request__c req : newList) {
+            if (completingIds.contains(req.Id) && openTaskCounts.containsKey(req.Id)) {
+                Integer openCount = openTaskCounts.get(req.Id);
+                req.addError(
+                    'Cannot mark as Completed: ' + openCount +
+                    ' task(s) are still open. Complete or reject all tasks first.'
+                );
+            }
+        }
+    }
+
+    // ─── Completion Side Effects ──────────────────────────────────────────────
+
+    /**
+     * @description AFTER_UPDATE: when an Onboarding Request transitions to
+     *              'Completed', automatically creates an Employee__c record
+     *              pre-populated with the new hire's details.
+     *              Called by OnboardingRequestTriggerHandler in AFTER_UPDATE context.
+     * @param newList Trigger.new
+     * @param oldMap  Trigger.oldMap
+     */
+    public static void handleCompletionSideEffects(
+        List<Onboarding_Request__c> newList,
+        Map<Id, Onboarding_Request__c> oldMap
+    ) {
+        Set<Id> completedIds = new Set<Id>();
+        for (Onboarding_Request__c req : newList) {
+            if (req.Status__c == 'Completed' && oldMap.get(req.Id).Status__c != 'Completed') {
+                completedIds.add(req.Id);
+            }
+        }
+        if (completedIds.isEmpty()) return;
+
+        // Query full request data needed to populate the Employee record
+        List<Onboarding_Request__c> fullReqs = [
+            SELECT Id, Employee_Name__c, Personal_Email__c, Phone__c, Department__c,
+                   Job_Title__c, Employment_Type__c, Location__c, Work_Mode__c,
+                   Start_Date__c, Reporting_Manager__c
+            FROM   Onboarding_Request__c
+            WHERE  Id IN :completedIds
+        ];
+
+        List<Employee__c> empsToCreate = new List<Employee__c>();
+        for (Onboarding_Request__c req : fullReqs) {
+            empsToCreate.add(new Employee__c(
+                Employee_Name__c      = req.Employee_Name__c,
+                Email__c              = req.Personal_Email__c,
+                Phone__c              = req.Phone__c,
+                Department__c         = req.Department__c,
+                Job_Title__c          = req.Job_Title__c,
+                Employment_Type__c    = req.Employment_Type__c,
+                Location__c           = req.Location__c,
+                Work_Mode__c          = req.Work_Mode__c,
+                Start_Date__c         = req.Start_Date__c,
+                Reporting_Manager__c  = req.Reporting_Manager__c,
+                Onboarding_Request__c = req.Id
+            ));
+        }
+
+        if (!empsToCreate.isEmpty()) {
+            insert empsToCreate;
+        }
+    }
+
+    // ─── Comments ─────────────────────────────────────────────────────────────
+
+    /**
+     * @description Returns all comments for an Onboarding Request, newest first.
+     *              Used by the onboardingComments LWC on the record page.
+     * @param requestId Id of the parent Onboarding_Request__c
+     */
+    @AuraEnabled(cacheable=true)
+    public static List<Onboarding_Comment__c> getComments(Id requestId) {
+        return [
+            SELECT Id, Comment__c, Is_Internal__c,
+                   CreatedById, CreatedBy.Name, CreatedDate
+            FROM   Onboarding_Comment__c
+            WHERE  Onboarding_Request__c = :requestId
+            ORDER BY CreatedDate DESC
+            LIMIT  200
+        ];
+    }
+
+    /**
+     * @description Creates a new comment on an Onboarding Request.
+     * @param requestId   Id of the parent Onboarding_Request__c
+     * @param commentText Body text of the comment
+     * @param isInternal  True = internal HR note; false = general comment
+     */
+    @AuraEnabled
+    public static void addComment(Id requestId, String commentText, Boolean isInternal) {
+        insert new Onboarding_Comment__c(
+            Onboarding_Request__c = requestId,
+            Comment__c            = commentText,
+            Is_Internal__c        = isInternal != null ? isInternal : false
+        );
+    }
+
+    // ─── Kanban Status Update ─────────────────────────────────────────────────
+
+    /**
+     * @description Updates the Status__c of an Onboarding Request.
+     *              Called by the onboardingKanbanBoard LWC on card drag-and-drop.
+     * @param requestId Id of the Onboarding_Request__c to update
+     * @param newStatus New status picklist value
+     */
+    @AuraEnabled
+    public static void updateRequestStatus(Id requestId, String newStatus) {
+        update new Onboarding_Request__c(
+            Id        = requestId,
+            Status__c = newStatus
+        );
+    }
+
+    // ─── LWC Controller Methods ───────────────────────────────────────────────
+
+    /**
+     * @description Returns all active (non-Completed, non-Cancelled) Onboarding Requests.
+     *              Used by the onboardingDashboard LWC.
+     */
+    @AuraEnabled(cacheable=true)
+    public static List<Onboarding_Request__c> getActiveRequests() {
+        return [
+            SELECT Id, Name, Employee_Name__c, Department__c, Status__c,
+                   Start_Date__c, Completion_Percentage__c, Assigned_HR__c,
+                   Assigned_HR__r.Name
+            FROM   Onboarding_Request__c
+            WHERE  Status__c NOT IN ('Completed', 'Cancelled')
+            ORDER BY Start_Date__c ASC
+            LIMIT 200
+        ];
+    }
+
+    /**
+     * @description Returns ALL Onboarding Requests (all statuses) including
+     *              their child tasks. Used by the modern onboardingDashboard LWC.
+     */
+    @AuraEnabled(cacheable=true)
+    public static List<Onboarding_Request__c> getAllRequestsWithTasks() {
+        return [
+            SELECT Id, Name, Employee_Name__c, Department__c, Status__c,
+                   Start_Date__c, Completion_Percentage__c, Assigned_HR__c,
+                   Assigned_HR__r.Name, Job_Title__c, Location__c, Work_Mode__c,
+                   Employment_Type__c, Reporting_Manager__c, Reporting_Manager__r.Name,
+                   Buddy__c, Buddy__r.Name,
+                   (SELECT Id, Name, Category__c, Due_Date__c,
+                           Is_Completed__c, Assigned_To__c, Assigned_To__r.Name
+                    FROM   Onboarding_Tasks__r
+                    ORDER BY Due_Date__c ASC NULLS LAST)
+            FROM   Onboarding_Request__c
+            ORDER BY Start_Date__c ASC
+            LIMIT  500
+        ];
+    }
+
+    /**
+     * @description Returns all active internal users as combobox options for the LWC form.
+     *              Used to populate Reporting Manager and Buddy dropdowns.
+     */
+    @AuraEnabled(cacheable=true)
+    public static List<Map<String, String>> getActiveUsers() {
+        List<Map<String, String>> opts = new List<Map<String, String>>();
+        for (User u : [
+            SELECT Id, Name
+            FROM   User
+            WHERE  IsActive = true
+            WITH USER_MODE
+            ORDER BY Name ASC
+            LIMIT  200
+        ]) {
+            opts.add(new Map<String, String>{ 'label' => u.Name, 'value' => u.Id });
+        }
+        return opts;
+    }
+
+    /**
+     * @description Creates a new Onboarding Request from the LWC form.
+     * @param employeeName       Full name of the new hire
+     * @param startDate          First day of work
+     * @param department         Department picklist value
+     * @param jobTitle           Role / position being hired for
+     * @param employmentType     Full-Time / Part-Time / Contract / Intern
+     * @param experience         Years of experience picklist value
+     * @param personalEmail      Personal email of the new hire
+     * @param phone              Personal phone of the new hire
+     * @param location           Office location picklist value
+     * @param workMode           On-site / Hybrid / Remote
+     * @param reportingManagerId Id of the User who will be the reporting manager
+     * @param buddyId            Id of the User assigned as onboarding buddy
+     * @return Id of the newly created record
+     */
+    @AuraEnabled
+    public static Id createOnboardingRequest(
+        String employeeName,
+        Date   startDate,
+        String department,
+        String jobTitle,
+        String employmentType,
+        String experience,
+        String personalEmail,
+        String phone,
+        String location,
+        String workMode,
+        Id     reportingManagerId,
+        Id     buddyId
+    ) {
+        Onboarding_Request__c request = new Onboarding_Request__c(
+            Employee_Name__c     = employeeName,
+            Start_Date__c        = startDate,
+            Department__c        = department,
+            Status__c            = 'New',
+            Job_Title__c         = jobTitle,
+            Employment_Type__c   = employmentType,
+            Experience__c        = experience,
+            Personal_Email__c    = personalEmail,
+            Phone__c             = phone,
+            Location__c          = location,
+            Work_Mode__c         = workMode,
+            Reporting_Manager__c = reportingManagerId,
+            Buddy__c             = buddyId
+        );
+        insert as system request;
+        return request.Id;
+    }
+
+    // ─── Inline Task Completion ───────────────────────────────────────────────
+
+    /**
+     * @description Marks a single Onboarding Task as complete and sets today as
+     *              the Completed_Date__c. Called from the onboardingDashboard LWC
+     *              via inline "Mark Done" button. The existing trigger on
+     *              Onboarding_Task__c will fire and recalculate the parent's
+     *              Completion_Percentage__c and Status__c automatically.
+     * @param taskId Id of the Onboarding_Task__c to mark complete
+     */
+    @AuraEnabled
+    public static void completeTask(Id taskId) {
+        update new Onboarding_Task__c(
+            Id                = taskId,
+            Is_Completed__c   = true,
+            Completed_Date__c = Date.today()
+        );
+    }
+
+    // ─── Reminder Logic (used by Scheduled Apex) ─────────────────────────────
+
+    /**
+     * @description Returns requests starting in exactly 3 days that still have
+     *              incomplete tasks. Used by OnboardingReminderScheduler.
+     */
+    public static List<Onboarding_Request__c> getRequestsNeedingReminder() {
+        Date targetDate = Date.today().addDays(3);
+        return [
+            SELECT Id, Name, Employee_Name__c, Start_Date__c,
+                   Assigned_HR__c, Assigned_HR__r.Email,
+                   (SELECT Id FROM Onboarding_Tasks__r WHERE Is_Completed__c = FALSE)
+            FROM   Onboarding_Request__c
+            WHERE  Start_Date__c = :targetDate
+            AND    Status__c NOT IN ('Completed', 'Cancelled')
+        ];
+    }
+
+    /**
+     * @description Sends reminder emails to HR for each request with incomplete tasks.
+     * @param requests Requests returned by getRequestsNeedingReminder()
+     */
+    public static void sendReminderEmails(List<Onboarding_Request__c> requests) {
+        List<Messaging.SingleEmailMessage> emails = new List<Messaging.SingleEmailMessage>();
+
+        for (Onboarding_Request__c req : requests) {
+            if (req.Onboarding_Tasks__r.isEmpty()) continue;
+            if (req.Assigned_HR__c == null)        continue;
+
+            Messaging.SingleEmailMessage mail = new Messaging.SingleEmailMessage();
+            mail.setTargetObjectId(req.Assigned_HR__c);
+            mail.setSaveAsActivity(false);
+            mail.setSubject('Action Required: Incomplete Onboarding Tasks for ' + req.Employee_Name__c);
+            mail.setPlainTextBody(
+                'Hi,\n\n' +
+                req.Employee_Name__c + ' starts in 3 days (' + req.Start_Date__c.format() + ').\n' +
+                'There are ' + req.Onboarding_Tasks__r.size() + ' incomplete onboarding task(s) remaining.\n\n' +
+                'Please review and complete all tasks before the start date.\n\n' +
+                'Onboarding Request: ' + req.Name
+            );
+            emails.add(mail);
+        }
+
+        if (!emails.isEmpty()) {
+            Messaging.sendEmail(emails);
+        }
+    }
+}

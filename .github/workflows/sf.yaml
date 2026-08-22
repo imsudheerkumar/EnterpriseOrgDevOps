@@ -4,11 +4,38 @@ run-name: "Salesforce CI Pipeline Running"
 
 on:
   push:
+    paths:
+      - 'force-app/**'
+    branches:
+      - feature/**
+
+  pull_request:
+    branches:
+      - main
+      - UAT
+      - DEV
+      - release/**
+    paths:
+      - 'force-app/**'  
+    types:
+      - opened
+      - closed
+
+
 
 jobs:
   setup-salesforce:
     name: Setup Salesforce
     runs-on: ubuntu-latest
+
+    environment: production
+    env:  
+      SFDX_AUTH_URL_VALUE: ${{ secrets.SFDX_AUTH_URL_VALUE }}
+      ORG_DEFAULT_ALIAS: ${{ vars.ORG_DEFAULT_ALIAS }}
+      NODE_VERSION: '>=20.9.0'
+      JAVA_VERSION: '>=11'
+      PYTHON_VERSION: '>=3.10'
+      SFCLI_VERSION: latest
 
     steps:
 
@@ -18,24 +45,25 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Print GitHub Repository Information
-      - name: GitHub Script
-        uses: actions/github-script@v9
+       # PREREQUISITES - Only needed if the runner doesn't already satisfy these requirements.
+      - name: Ensure node v20.9.0 or greater
+        uses: actions/setup-node@v5
         with:
-          script: |
-            console.log("Clone URL:", context.payload.repository.clone_url);
-            console.log("SSH URL:", context.payload.repository.ssh_url);
-            console.log("Git URL:", context.payload.repository.git_url);
-            console.log("SVN URL:", context.payload.repository.svn_url);
-            console.log("HTML URL:", context.payload.repository.html_url);
-            console.log("Owner:", context.payload.repository.owner.login);
-            console.log("Repository:", context.payload.repository.name);
-            console.log("Full Name:", context.payload.repository.full_name);
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Ensure java v11 or greater
+        uses: actions/setup-java@v5
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'zulu'
+      - name: Ensure python v3.10 or greater
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
 
       # Install Salesforce CLI
       - name: Install Salesforce CLI
         run: |
-          npm install --global @salesforce/cli@latest
+          npm install --global @salesforce/cli@${{ env.SFCLI_VERSION }}
 
       # Check Salesforce CLI Version
       - name: Check Salesforce CLI Version
@@ -47,10 +75,29 @@ jobs:
         run: |
           sf plugins install code-analyzer
 
+      # Run Code Analyzer
+      - name: Run Salesforce Code Analyzer
+        id: run-code-analyzer
+        uses: forcedotcom/run-code-analyzer@v2
+        with:
+          run-arguments: --workspace . --view detail --output-file sfca_results.html --output-file sfca_results.json
+          results-artifact-name: salesforce-code-analyzer-results
+          github-token: ${{ github.token }}
+
+       # Option 1: Quality gate on ALL files in the repository
+      - name: Fail on Critical/High Violations (All Files)
+        if: |
+          steps.run-code-analyzer.outputs.exit-code > 0 ||
+          steps.run-code-analyzer.outputs.num-sev1-violations > 0 ||
+          steps.run-code-analyzer.outputs.num-sev2-violations > 0 ||
+          steps.run-code-analyzer.outputs.num-violations > 10
+        run: exit 0
+
+        
       # Authenticate with Salesforce
       - name: Authenticate Salesforce
         env:
-          SFDX_AUTH_URL_VALUE: ${{ secrets.SFDX_AUTH_URL_VALUE }}
+          SFDX_AUTH_URL_VALUE: ${{ env.SFDX_AUTH_URL_VALUE }}
         run: |
           echo "$SFDX_AUTH_URL_VALUE" | sf org login sfdx-url --sfdx-url-stdin --set-default --alias TRAIL_PROD_ORG
 
@@ -58,3 +105,13 @@ jobs:
       - name: Verify Salesforce Org is Authenticated
         run: |
           sf org display --target-org TRAIL_PROD_ORG --json
+
+      # Deploy Salesforce Metadata
+      - name: Deploy Salesforce Metadata
+        run: |
+          sf project deploy start --source-dir force-app/main/default/ --target-org ${{ env.ORG_DEFAULT_ALIAS }} 
+
+      # # Assign Permission Set
+      # - name: Assign Permission Set
+      #   run: |
+      #     sf org assign permset --permsetname Onboarding_Manager --on-behalf-of enterpriseorg@sopra.com --target-org ${{ env.ORG_DEFAULT_ALIAS }}

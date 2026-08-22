@@ -13,6 +13,10 @@ deploy-options.json
 
 # LWC Jest coverage reports
 coverage/
+<<<<<<< HEAD
+=======
+delta/
+>>>>>>> origin/main
 
 # Logs
 logs
@@ -20,6 +24,12 @@ logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+<<<<<<< HEAD
+=======
+data/
+authFile.json
+.env.dev
+>>>>>>> origin/main
 
 # Dependency directories
 node_modules/

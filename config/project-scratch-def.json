@@ -1,7 +1,20 @@
 {
+<<<<<<< HEAD
   "orgName": "Demo company",
   "edition": "Developer",
   "features": ["EnableSetPasswordInApi"],
+=======
+  "orgName": "PantherSchools",
+  "edition": "Enterprise",
+  "hasSampleData": true,
+  "adminEmail": "amitsingh@pantherschools.com",
+  "description": "This is sample org used for the deployment validation purpose!",
+  "workItem__c": "TICKET-23245",
+  "userStory__c": "US-12345",
+  "features": [
+    "EnableSetPasswordInApi"
+  ],
+>>>>>>> origin/main
   "settings": {
     "lightningExperienceSettings": {
       "enableS1DesktopEnabled": true
@@ -10,4 +23,8 @@
       "enableS1EncryptedStoragePref2": false
     }
   }
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> origin/main
