@@ -109,7 +109,7 @@ jobs:
       # Deploy Salesforce Metadata
       - name: Deploy Salesforce Metadata
         run: |
-          sf project deploy start --source-dir force-app/main/default/ --target-org ${{ env.ORG_DEFAULT_ALIAS }} 
+          sf project deploy start --source-dir force-app/main/default/ --target-org TRAIL_PROD_ORG 
 
       # # Assign Permission Set
       # - name: Assign Permission Set
