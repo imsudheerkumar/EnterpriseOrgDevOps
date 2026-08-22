@@ -67,13 +67,6 @@ jobs:
         run: |
           sf plugins install code-analyzer
 
-      - name: Check encrypted key file
-        run: |
-          pwd
-          find . -name "*.key.enc" -type f
-          ls -la
-          ls -la assets/prod || true
-
       # Run Code Analyzer
       - name: Run Salesforce Code Analyzer
         id: run-code-analyzer
@@ -91,7 +84,7 @@ jobs:
       # Authenticate with Salesforce
       - name: Authenticate Salesforce with JWT
         run: |
-          sf org login jwt --client-id ${{secrets.CONSUMER_KEY}} --jwt-key-file ${{secrets.JWT_KEY_FILE}} --username ${{secrets.DEPLOYMENT_USERNAME}} --set-default --alias ${{vars.ORG_DEFAULT_ALIAS}} --instance-url ${{secrets.HUB_LOGIN_URL}}
+          sf org login jwt --client-id ${{secrets.CONSUMER_KEY}} --jwt-key-file ${{secrets.JWT_KEY_FILE}} --username ${{secrets.DEPLOYMENT_USER_USERNAME}} --set-default --alias ${{vars.ORG_DEFAULT_ALIAS}} --instance-url ${{secrets.HUB_LOGIN_URL}}
 
       # Verify Salesforce Org Information
       - name: Verify Salesforce Org is Authenticated
