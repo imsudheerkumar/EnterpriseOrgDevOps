@@ -67,6 +67,13 @@ jobs:
         run: |
           sf plugins install code-analyzer
 
+      - name: Check encrypted key file
+        run: |
+          pwd
+          find . -name "*.key.enc" -type f
+          ls -la
+          ls -la assets/prod || true
+
       # Run Code Analyzer
       - name: Run Salesforce Code Analyzer
         id: run-code-analyzer
