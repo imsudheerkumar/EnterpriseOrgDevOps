@@ -1,6 +1,6 @@
-name: Salesforce CI Pipeline
+name: Salesforce Production CI Pipeline
 
-run-name: "Salesforce CI Pipeline Running"
+run-name: "Salesforce Production CI Pipeline Running"
 
 on:
   push:
@@ -15,13 +15,12 @@ on:
       - UAT
       - DEV
       - release/**
+      - hotfix/**
     paths:
       - 'force-app/**'  
     types:
       - opened
       - closed
-
-
 
 jobs:
   setup-salesforce:
@@ -29,13 +28,6 @@ jobs:
     runs-on: ubuntu-latest
 
     environment: production
-    env:  
-      SFDX_AUTH_URL_VALUE: ${{ secrets.SFDX_AUTH_URL_VALUE }}
-      ORG_DEFAULT_ALIAS: ${{ vars.ORG_DEFAULT_ALIAS }}
-      NODE_VERSION: '>=20.9.0'
-      JAVA_VERSION: '>=11'
-      PYTHON_VERSION: '>=3.10'
-      SFCLI_VERSION: latest
 
     steps:
 
@@ -49,21 +41,21 @@ jobs:
       - name: Ensure node v20.9.0 or greater
         uses: actions/setup-node@v5
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version: ${{ vars.NODE_VERSION }}
       - name: Ensure java v11 or greater
         uses: actions/setup-java@v5
         with:
-          java-version: ${{ env.JAVA_VERSION }}
+          java-version: ${{ vars.JAVA_VERSION }}
           distribution: 'zulu'
       - name: Ensure python v3.10 or greater
         uses: actions/setup-python@v6
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: ${{ vars.PYTHON_VERSION }}
 
       # Install Salesforce CLI
       - name: Install Salesforce CLI
         run: |
-          npm install --global @salesforce/cli@${{ env.SFCLI_VERSION }}
+          npm install --global @salesforce/cli@${{ vars.SF_CLI_VERSION }}
 
       # Check Salesforce CLI Version
       - name: Check Salesforce CLI Version
@@ -71,7 +63,7 @@ jobs:
           sf --version
 
       # Install Salesforce Code Analyzer
-      - name: Install Code Analyzer
+      - name: Install Salesforce Code Analyzer
         run: |
           sf plugins install code-analyzer
 
@@ -84,34 +76,22 @@ jobs:
           results-artifact-name: salesforce-code-analyzer-results
           github-token: ${{ github.token }}
 
-       # Option 1: Quality gate on ALL files in the repository
-      - name: Fail on Critical/High Violations (All Files)
-        if: |
-          steps.run-code-analyzer.outputs.exit-code > 0 ||
-          steps.run-code-analyzer.outputs.num-sev1-violations > 0 ||
-          steps.run-code-analyzer.outputs.num-sev2-violations > 0 ||
-          steps.run-code-analyzer.outputs.num-violations > 10
-        run: exit 0
-
-        
-      # Authenticate with Salesforce
-      - name: Authenticate Salesforce
-        env:
-          SFDX_AUTH_URL_VALUE: ${{ env.SFDX_AUTH_URL_VALUE }}
+      # Decrypt the encrypted JWT key file
+      - name: Decrypt the encrypted JWT key file
         run: |
-          echo "$SFDX_AUTH_URL_VALUE" | sf org login sfdx-url --sfdx-url-stdin --set-default --alias TRAIL_PROD_ORG
+         openssl enc -nosalt -aes-256-cbc -d -in ${{secrets.ENCRYPTION_KEY_FILE}} -out ${{secrets.JWT_KEY_FILE}} -base64 -K ${{secrets.DECRYPTION_KEY}} -iv ${{secrets.DECRYPTION_IV}}
+       
+      # Authenticate with Salesforce
+      - name: Authenticate Salesforce with JWT
+        run: |
+          sf org login jwt --client-id ${{secrets.CONSUMER_KEY}} --jwt-key-file ${{secrets.JWT_KEY_FILE}} --username ${{secrets.DEPLOYMENT_USERNAME}} --set-default --alias ${{vars.ORG_DEFAULT_ALIAS}} --instance-url ${{secrets.HUB_LOGIN_URL}}
 
       # Verify Salesforce Org Information
       - name: Verify Salesforce Org is Authenticated
         run: |
-          sf org display --target-org TRAIL_PROD_ORG --json
+          sf org display --target-org ${{vars.ORG_DEFAULT_ALIAS}} --json
 
       # Deploy Salesforce Metadata
       - name: Deploy Salesforce Metadata
         run: |
-          sf project deploy start --source-dir force-app/main/default/ --target-org TRAIL_PROD_ORG 
-
-      # # Assign Permission Set
-      # - name: Assign Permission Set
-      #   run: |
-      #     sf org assign permset --permsetname Onboarding_Manager --on-behalf-of enterpriseorg@sopra.com --target-org ${{ env.ORG_DEFAULT_ALIAS }}
+          sf project deploy start --source-dir force-app/main/default/ --target-org ${{vars.ORG_DEFAULT_ALIAS}} 
