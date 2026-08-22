@@ -87,6 +87,7 @@
 		<members>Onboarding</members>
 		<name>ReportFolder</name>
 	</types>
+	
 	<types>
 		<members>Onboarding_Managers</members>
 		<name>Role</name>
