@@ -1,21 +1,17 @@
-name: Salesforce Production CI Pipeline
+name: Salesforce Production CI/CD Pipeline
 
-run-name: "Salesforce Production CI Pipeline Running"
+run-name: "Salesforce Production CI/CD Pipeline Running"
 
 on:
   push:
     paths:
       - 'force-app/**'
     branches:
-      - feature/**
+      - main
 
   pull_request:
     branches:
       - main
-      - UAT
-      - DEV
-      - release/**
-      - hotfix/**
     paths:
       - 'force-app/**'  
     types:
