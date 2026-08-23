@@ -1,0 +1,93 @@
+name: Salesforce Production CI/CD Pipeline
+
+run-name: "Salesforce Production CI/CD Pipeline Running"
+
+on:
+  push:
+    paths:
+      - 'force-app/**'
+    branches:
+      - main
+
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'force-app/**'  
+    types:
+      - opened
+      - closed
+
+jobs:
+  setup-salesforce:
+    name: Setup Salesforce
+    runs-on: ubuntu-latest
+
+    environment: production
+
+    steps:
+
+      # Checkout repository
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+       # PREREQUISITES - Only needed if the runner doesn't already satisfy these requirements.
+      - name: Ensure node v20.9.0 or greater
+        uses: actions/setup-node@v5
+        with:
+          node-version: ${{ vars.NODE_VERSION }}
+      - name: Ensure java v11 or greater
+        uses: actions/setup-java@v5
+        with:
+          java-version: ${{ vars.JAVA_VERSION }}
+          distribution: 'zulu'
+      - name: Ensure python v3.10 or greater
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ vars.PYTHON_VERSION }}
+
+      # Install Salesforce CLI
+      - name: Install Salesforce CLI
+        run: |
+          npm install --global @salesforce/cli@${{ vars.SF_CLI_VERSION }}
+
+      # Check Salesforce CLI Version
+      - name: Check Salesforce CLI Version
+        run: |
+          sf --version
+
+      # Install Salesforce Code Analyzer
+      - name: Install Salesforce Code Analyzer
+        run: |
+          sf plugins install code-analyzer
+
+      # Run Code Analyzer
+      - name: Run Salesforce Code Analyzer
+        id: run-code-analyzer
+        uses: forcedotcom/run-code-analyzer@v2
+        with:
+          run-arguments: --workspace . --view detail --output-file sfca_results.html --output-file sfca_results.json
+          results-artifact-name: salesforce-code-analyzer-results
+          github-token: ${{ github.token }}
+
+      # Decrypt the encrypted JWT key file
+      - name: Decrypt the encrypted JWT key file
+        run: |
+         openssl enc -nosalt -aes-256-cbc -d -in ${{secrets.ENCRYPTION_KEY_FILE}} -out ${{secrets.JWT_KEY_FILE}} -base64 -K ${{secrets.DECRYPTION_KEY}} -iv ${{secrets.DECRYPTION_IV}}
+       
+      # Authenticate with Salesforce
+      - name: Authenticate Salesforce with JWT
+        run: |
+          sf org login jwt --client-id ${{secrets.CONSUMER_KEY}} --jwt-key-file ${{secrets.JWT_KEY_FILE}} --username ${{secrets.DEPLOYMENT_USER_USERNAME}} --set-default --alias ${{vars.ORG_DEFAULT_ALIAS}} --instance-url ${{vars.HUB_LOGIN_URL}}
+
+      # Verify Salesforce Org Information
+      - name: Verify Salesforce Org is Authenticated
+        run: |
+          sf org display --target-org ${{vars.ORG_DEFAULT_ALIAS}} --json
+
+      # Deploy Salesforce Metadata
+      - name: Deploy Salesforce Metadata
+        run: |
+          sf project deploy start --source-dir force-app/main/default/ --target-org ${{vars.ORG_DEFAULT_ALIAS}} 
