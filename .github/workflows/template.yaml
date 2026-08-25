@@ -142,7 +142,7 @@ jobs:
 
       # Deploy to Salesforce ORG - RunRelevantTests
       - name: "Deploy to Salesforce ORG - RunRelevantTests"
-        if: ${{ env.apex_test_classes == 'RunRelevantTests' && inputs.deploy }}
+        if: ${{ env.apex_test_classes == 'RunRelevantTests' }}
         run: |
           sf project deploy start --test-level RunRelevantTests \
             --source-dir force-app/main/default  \
@@ -151,7 +151,7 @@ jobs:
       # Deploy to Salesforce org - Default Test Level
       - name: "Deploy to Salesforce org - Default Test Level"
         #if: ${{ github.event.pull_request.merged == true && github.event.action == 'closed' && env.apex_classes == 'No Apex classes found' && (env.validation_id == '' || env.deploy_done == 'false') }}
-        if: ${{ env.apex_test_classes == 'No Apex classes found' && inputs.deploy }}
+        if: ${{ env.apex_test_classes == 'No Apex classes found' }}
         run: |
           sf project deploy start \
             --source-dir force-app/main/default \
@@ -160,7 +160,7 @@ jobs:
 
       # Deploy to Salesforce ORG - With Specific Tests
       - name: "Deploy to Salesforce ORG - With Specific Tests"
-        if: ${{ env.apex_test_classes != 'No Apex classes found' && inputs.deploy }}
+        if: ${{ env.apex_test_classes != 'No Apex classes found' }}
         run: |
           sf project deploy start --test-level RunSpecifiedTests \
             --tests ${{ env.apex_test_classes }} \
