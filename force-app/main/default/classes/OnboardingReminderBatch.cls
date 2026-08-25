@@ -9,7 +9,7 @@
  *              Implements Database.Stateful so the total processed count is preserved
  *              across chunks and visible in the finish() debug log.
  *   Execute manually via Anonymous Apex also
- *   Database.executeBatch(new OnboardingReminderBatch(), 50);++change to 5000
+ *   Database.executeBatch(new OnboardingReminderBatch(), 50);
  */
 public with sharing class OnboardingReminderBatch
         implements Database.Batchable<SObject>, Database.Stateful {

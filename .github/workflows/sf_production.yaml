@@ -19,6 +19,7 @@ on:
 
 jobs:
   build-salesforce:
+    name: Build & Validate Salesforce Code
     uses: ./.github/workflows/template.yaml
     with:
       environment: production
