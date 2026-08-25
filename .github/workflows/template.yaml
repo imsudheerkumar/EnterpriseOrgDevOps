@@ -128,8 +128,8 @@ jobs:
           sf project deploy start \
             --source-dir force-app/main/default \
             --target-org ${{ vars.ORG_DEFAULT_ALIAS }} \
-            --wait 45
-            --dry-run
+            --wait 45 \
+            --dry-run --json 2>&1 | tee deploy-result.json
 
       # Validate to Salesforce ORG - RunRelevantTests
       - name: "Validate to Salesforce ORG - RunRelevantTests"
