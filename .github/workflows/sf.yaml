@@ -11,10 +11,14 @@ on:
 
 jobs:
   build-salesforce:
+    name: Build & Validate Salesforce Code
     uses: ./.github/workflows/template.yaml
     with:
       environment: dev
-    secrets: inherit
-    #secrets: if we want to use some template specific secrets set these in the template.yaml file and input them here.
-    #  - SLACKNAME
-    #  - SLACKWEBHOOK
+    secrets:
+      ENCRYPTION_KEY_FILE: ${{ secrets.ENCRYPTION_KEY_FILE }}
+      JWT_KEY_FILE: ${{ secrets.JWT_KEY_FILE }}
+      DECRYPTION_KEY: ${{ secrets.DECRYPTION_KEY }}
+      DECRYPTION_IV: ${{ secrets.DECRYPTION_IV }}
+      CONSUMER_KEY: ${{ secrets.CONSUMER_KEY }}
+      DEPLOYMENT_USER_USERNAME: ${{ secrets.DEPLOYMENT_USER_USERNAME }}

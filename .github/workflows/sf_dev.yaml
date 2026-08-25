@@ -1,6 +1,6 @@
-name: Salesforce UAT CI/CD Pipeline
+name: Salesforce Dev CI/CD Pipeline
 
-run-name: "Salesforce UAT CI/CD Pipeline Running"
+run-name: "Salesforce Dev CI/CD Pipeline Running"
 
 on:
   push:
@@ -20,7 +20,14 @@ on:
 
 jobs:
   build-salesforce:
+    name: Build & Validate Salesforce Code
     uses: ./.github/workflows/template.yaml
     with:
       environment: dev
-    secrets: inherit
+    secrets:
+      ENCRYPTION_KEY_FILE: ${{ secrets.ENCRYPTION_KEY_FILE }}
+      JWT_KEY_FILE: ${{ secrets.JWT_KEY_FILE }}
+      DECRYPTION_KEY: ${{ secrets.DECRYPTION_KEY }}
+      DECRYPTION_IV: ${{ secrets.DECRYPTION_IV }}
+      CONSUMER_KEY: ${{ secrets.CONSUMER_KEY }}
+      DEPLOYMENT_USER_USERNAME: ${{ secrets.DEPLOYMENT_USER_USERNAME }}
