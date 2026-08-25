@@ -1,5 +1,5 @@
-name: Salesforce Main Branch CI/CD Pipeline
-run-name: "Salesforce Main Branch CI/CD Pipeline Running"
+name: Production Pipeline
+run-name: "Production Pipeline Running"
 
 on:
   push:

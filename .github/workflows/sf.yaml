@@ -1,6 +1,6 @@
-name: Salesforce Feature Branch CI/CD Pipeline
+name: Feature Branch Pipeline
 
-run-name: "Salesforce Feature Branch CI/CD Pipeline Running"
+run-name: "Feature Branch Pipeline Running"
 
 on:
   push:
