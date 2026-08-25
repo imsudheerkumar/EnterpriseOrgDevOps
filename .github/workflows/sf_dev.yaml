@@ -1,6 +1,6 @@
-name: Salesforce UAT CI/CD Pipeline
+name: Salesforce Dev CI/CD Pipeline
 
-run-name: "Salesforce UAT CI/CD Pipeline Running"
+run-name: "Salesforce Dev CI/CD Pipeline Running"
 
 on:
   push:
