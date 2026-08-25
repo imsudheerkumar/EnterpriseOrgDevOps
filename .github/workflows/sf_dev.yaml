@@ -1,4 +1,5 @@
 name: Salesforce UAT CI/CD Pipeline
+
 run-name: "Salesforce UAT CI/CD Pipeline Running"
 
 on:
@@ -6,11 +7,11 @@ on:
     paths:
       - 'force-app/**'
     branches:
-      - uat
+      - dev
 
   pull_request:
     branches:
-      - uat
+      - dev
     paths:
       - 'force-app/**'  
     types:
@@ -21,5 +22,5 @@ jobs:
   build-salesforce:
     uses: ./.github/workflows/template.yaml
     with:
-      environment: uat
+      environment: dev
     secrets: inherit
