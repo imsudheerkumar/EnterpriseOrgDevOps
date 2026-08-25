@@ -8,6 +8,25 @@ on:
         required: true
         default: "dev"
         type: string
+    secrets:
+      ENCRYPTION_KEY_FILE:
+        description: Encrypted JWT key file path
+        required: true
+      JWT_KEY_FILE:
+        description: Decrypted JWT key file path
+        required: true
+      DECRYPTION_KEY:
+        description: AES decryption key
+        required: true
+      DECRYPTION_IV:
+        description: AES initialization vector
+        required: true
+      CONSUMER_KEY:
+        description: Salesforce Connected App consumer key
+        required: true
+      DEPLOYMENT_USER_USERNAME:
+        description: Salesforce deployment username
+        required: true
 
 
 jobs:
@@ -79,5 +98,6 @@ jobs:
 
       # Deploy Salesforce Metadata
       - name: Deploy Salesforce Metadata
+        if: github.event_name == 'push'
         run: |
           sf project deploy start --source-dir force-app/main/default/ --target-org ${{vars.ORG_DEFAULT_ALIAS}} 
