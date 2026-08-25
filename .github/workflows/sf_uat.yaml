@@ -3,23 +3,38 @@ run-name: "Salesforce UAT CI/CD Pipeline Running"
 
 on:
   push:
-    paths:
-      - 'force-app/**'
     branches:
       - uat
+    paths:
+      - 'force-app/**'
+      - 'sfdx-project.json'
 
   pull_request:
     branches:
       - uat
     paths:
-      - 'force-app/**'  
+      - 'force-app/**'
+      - 'sfdx-project.json'
     types:
       - opened
-      - closed
+      - synchronize
+      - reopened
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build-salesforce:
+    name: Build & Validate Salesforce Code
     uses: ./.github/workflows/template.yaml
     with:
       environment: uat
-    secrets: inherit
+    secrets:
+      ENCRYPTION_KEY_FILE: ${{ secrets.ENCRYPTION_KEY_FILE }}
+      JWT_KEY_FILE: ${{ secrets.JWT_KEY_FILE }}
+      DECRYPTION_KEY: ${{ secrets.DECRYPTION_KEY }}
+      DECRYPTION_IV: ${{ secrets.DECRYPTION_IV }}
+      CONSUMER_KEY: ${{ secrets.CONSUMER_KEY }}
+      DEPLOYMENT_USER_USERNAME: ${{ secrets.DEPLOYMENT_USER_USERNAME }}
