@@ -1,14 +1,7 @@
-name: Salesforce UAT CI/CD Pipeline
-run-name: "Salesforce UAT CI/CD Pipeline Running"
+name: UAT Pipeline
+run-name: "UAT Pipeline Running"
 
 on:
-  push:
-    branches:
-      - uat
-    paths:
-      - 'force-app/**'
-      - 'sfdx-project.json'
-
   pull_request:
     branches:
       - uat
@@ -17,6 +10,7 @@ on:
       - 'sfdx-project.json'
     types:
       - opened
+      - closed
       - synchronize
       - reopened
 

@@ -62,6 +62,16 @@ jobs:
         with:
           python-version: ${{ vars.PYTHON_VERSION }}
 
+
+      # Read PR Details and Create File to Extract Apex Test Classes to Run
+      - name: Read PR Details and Create File to Extract Apex Test Classes to Run
+        run: |
+          echo "${{ github.event.pull_request.body }}" >> pr_body.txt
+          python READ_PRBODY.py > output.txt
+          cat output.txt
+          echo "apex_test_classes=$(cat output.txt)" >> $GITHUB_ENV
+          echo "${{ env.apex_test_classes }}"
+
       # Install Salesforce CLI
       - name: Install Salesforce CLI
         run: |
