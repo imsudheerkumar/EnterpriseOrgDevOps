@@ -8,6 +8,11 @@ on:
         required: true
         default: "dev"
         type: string
+      deploy:
+        description: Whether to deploy the code to the environment
+        required: true
+        default: true
+        type: boolean
     secrets:
       ENCRYPTION_KEY_FILE:
         description: Encrypted JWT key file path
@@ -98,6 +103,6 @@ jobs:
 
       # Deploy Salesforce Metadata
       - name: Deploy Salesforce Metadata
-        if: github.event_name == 'push'
+        if: ${{ inputs.deploy }}
         run: |
           sf project deploy start --source-dir force-app/main/default/ --target-org ${{vars.ORG_DEFAULT_ALIAS}} 
