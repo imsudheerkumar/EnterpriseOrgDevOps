@@ -105,4 +105,4 @@ jobs:
       - name: Deploy Salesforce Metadata
         if: ${{ inputs.deploy }}
         run: |
-          sf project deploy start --source-dir force-app/main/default/ --target-org ${{vars.ORG_DEFAULT_ALIAS}} 
+          sf project deploy start --source-dir force-app/main/default/ --target-org ${{vars.ORG_DEFAULT_ALIAS}} --ignore-conflicts
