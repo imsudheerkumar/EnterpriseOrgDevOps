@@ -7,12 +7,10 @@ on:
       - uat
     paths:
       - 'force-app/**'
-      - 'sfdx-project.json'
     types:
       - opened
       - closed
       - synchronize
-      - reopened
 
   workflow_dispatch:
 
