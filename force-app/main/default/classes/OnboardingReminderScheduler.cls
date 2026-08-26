@@ -10,6 +10,8 @@
  * Schedule via Anonymous Apex:
  *   OnboardingReminderScheduler job = new OnboardingReminderScheduler();
  *   System.schedule('Daily Onboarding Reminders', '0 0 8 * * ?', job);
+
+ DELTAA
  */
 public with sharing class OnboardingReminderScheduler implements Schedulable {
 

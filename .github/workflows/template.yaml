@@ -87,6 +87,14 @@ jobs:
         run: |
           sf plugins install code-analyzer
 
+      # Install SFDX Git Delta
+      - name: Install SFDX Git Delta
+        run: echo 'Y' | sf plugins install git-delta
+
+      # Generate Delta File
+      - name: Generate Delta File
+        run: |
+          
       # Run Code Analyzer
       - name: Run Salesforce Code Analyzer
         id: run-code-analyzer
