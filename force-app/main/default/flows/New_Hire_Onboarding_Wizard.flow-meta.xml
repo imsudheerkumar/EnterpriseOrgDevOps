@@ -45,9 +45,9 @@
             <stringValue>Sales</stringValue>
         </value>
     </choices>
-    <description>Screen Flow: A 3-step guided wizard for HR to create a new Onboarding Request.</description>
+    <description>Screen Flow: A 3-step guided pathway for HR to create a new Onboarding Request.</description>
     <environments>Default</environments>
-    <interviewLabel>New Hire Onboarding Wizard {!$Flow.CurrentDateTime}</interviewLabel>
+    <interviewLabel>New Hire Onboarding Wizard Main Flow {!$Flow.CurrentDateTime}</interviewLabel>
     <label>New Hire Onboarding Wizard</label>
     <processMetadataValues>
         <name>BuilderType</name>
