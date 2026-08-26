@@ -171,7 +171,8 @@ jobs:
         run: |
           sf project deploy start --test-level RunRelevantTests \
             --source-dir delta/force-app/main/default  \
-            --target-org ${{ vars.ORG_DEFAULT_ALIAS }} --wait 45
+            --target-org ${{ vars.ORG_DEFAULT_ALIAS }} \
+            --ignore-conflicts --wait 45
 
       - name: "Deploy to Salesforce org - Default Test Level"
         if: ${{ env.apex_test_classes == 'No Apex classes found' && github.event.pull_request.merged == true && github.event_name == 'pull_request'}}
@@ -179,7 +180,7 @@ jobs:
           sf project deploy start \
             --source-dir delta/force-app/main/default \
             --target-org ${{ vars.ORG_DEFAULT_ALIAS }} \
-            --wait 45
+            --ignore-conflicts --wait 45
 
       - name: "Deploy to Salesforce ORG - With Specific Tests"
         if: ${{ env.apex_test_classes != 'No Apex classes found' && github.event.pull_request.merged == true && github.event_name == 'pull_request'}}
@@ -187,4 +188,5 @@ jobs:
           sf project deploy start --test-level RunSpecifiedTests \
             --tests ${{ env.apex_test_classes }} \
             --source-dir delta/force-app/main/default \
-            --target-org ${{ vars.ORG_DEFAULT_ALIAS }} --wait 45
+            --target-org ${{ vars.ORG_DEFAULT_ALIAS }} \
+            --ignore-conflicts --wait 45
