@@ -89,7 +89,7 @@ jobs:
 
       # Install SFDX Git Delta
       - name: Install SFDX Git Delta
-        run: echo 'Y' | sf plugins install git-delta
+        run: echo 'Y' | sf plugins install sfdx-git-delta
 
       # Before running create the folder called delta and then generate the delta file, we use the HEAD~1 to HEAD delta to get the latest changes and then we use the delta to deploy the changes to the Salesforce org
       # This is to avoid the issue of the delta file being too large and causing the deploy to fail
