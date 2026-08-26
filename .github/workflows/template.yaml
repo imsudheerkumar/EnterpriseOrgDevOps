@@ -164,6 +164,12 @@ jobs:
             --target-org ${{ vars.ORG_DEFAULT_ALIAS }} --wait 45 \
             --dry-run --json 2>&1 | tee deploy-result.json
 
+      # Enforce 80% code coverage
+      - name: "Enfore 80% code coverage"
+        if: ${{ github.event.pull_request.merged == false && github.event_name == 'pull_request' }}
+        run: |
+          python CODE_COVERAGE.py sfca_results.json
+
       # Deploy to Salesforce ORG - RunRelevantTests or Default Test Level or With Specific Tests
       # if PR is merged, then deploy the changes to the Salesforce org
       - name: "Deploy to Salesforce ORG - RunRelevantTests"

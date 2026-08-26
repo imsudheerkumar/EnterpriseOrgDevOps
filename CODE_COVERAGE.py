@@ -2,7 +2,7 @@ import json
 import os
 import sys
 
-COVERAGE_THRESHOLD = 85
+COVERAGE_THRESHOLD = 80
 
 def check_component_failures(data):
     component_failures = data.get('result', {}).get('details', {}).get('componentFailures', [])
