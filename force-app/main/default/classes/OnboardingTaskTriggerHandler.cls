@@ -2,6 +2,8 @@
  * @description Trigger handler for Onboarding_Task__c.
  *              Follows the "one trigger per object, handler class" pattern.
  *              Delegates all logic to OnboardingService.
+
+ ADDED VIA GITHUB ACTIONS
  */
 public with sharing class OnboardingTaskTriggerHandler {
 

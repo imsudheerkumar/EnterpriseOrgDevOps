@@ -7,7 +7,7 @@ on:
     paths:
       - 'force-app/**'
     branches:
-      - feature/**
+      - abc_feature/**
 
 jobs:
   build-salesforce:
