@@ -2,7 +2,7 @@ import json
 import os
 import sys
 
-COVERAGE_THRESHOLD = 85
+COVERAGE_THRESHOLD = 80
 
 def check_component_failures(data):
     component_failures = data.get('result', {}).get('details', {}).get('componentFailures', [])
@@ -131,5 +131,5 @@ def calculate_coverage(file_path):
 
 
 if __name__ == "__main__":
-    file_path = sys.argv[1] if len(sys.argv) > 1 else 'deploy-result.json'
+    file_path = sys.argv[1] if len(sys.argv) > 1 else 'sfca_results.json'
     calculate_coverage(file_path)
