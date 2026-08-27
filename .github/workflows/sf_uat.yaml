@@ -1,6 +1,6 @@
-name: Dev Pipeline
+name: UAT Pipeline
 
-run-name: Dev Pipeline Running
+run-name: UAT Pipeline Running
 
 on:
   pull_request:
@@ -42,7 +42,7 @@ jobs:
   deploy:
     name: Deploy Salesforce Changes
     if: github.event_name == 'push'
-    uses: ./.github/workflows/deploy.yml
+    uses: ./.github/workflows/deploy.yaml
     with:
       environment: uat
     secrets: *common-secrets
