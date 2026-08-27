@@ -1,39 +1,50 @@
 name: Production Pipeline
-run-name: "Production Pipeline Running"
+
+run-name: Production Pipeline Running
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'force-app/**'
-    
-
   pull_request:
     branches:
       - main
     paths:
-      - 'force-app/**'  
+      - "force-app/**"
     types:
       - opened
       - reopened
       - synchronize
+
+  push:
+    branches:
+      - main
+    paths:
+      - "force-app/**"
+
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  build-salesforce:
-    name: Build & Validate Salesforce Code
-    uses: ./.github/workflows/template.yaml
+  validate:
+    name: Validate Salesforce Changes
+    if: github.event_name == 'pull_request'
+    uses: ./.github/workflows/validate.yml
     with:
       environment: production
-      deploy: ${{ github.event_name == 'push' }}
-    secrets:
+    secrets: &common-secrets
       ENCRYPTION_KEY_FILE: ${{ secrets.ENCRYPTION_KEY_FILE }}
       JWT_KEY_FILE: ${{ secrets.JWT_KEY_FILE }}
       DECRYPTION_KEY: ${{ secrets.DECRYPTION_KEY }}
       DECRYPTION_IV: ${{ secrets.DECRYPTION_IV }}
       CONSUMER_KEY: ${{ secrets.CONSUMER_KEY }}
       DEPLOYMENT_USER_USERNAME: ${{ secrets.DEPLOYMENT_USER_USERNAME }}
+
+  deploy:
+    name: Deploy Salesforce Changes
+
+    if: github.event_name == 'push'
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: production
+
+    secrets: *common-secrets
