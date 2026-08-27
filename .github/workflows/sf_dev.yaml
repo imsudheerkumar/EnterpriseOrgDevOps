@@ -1,34 +1,48 @@
 name: Dev Pipeline
 
-run-name: "Dev Pipeline Running"
+run-name: Dev Pipeline Running
 
 on:
-  push:
-    paths:
-      - 'force-app/**'
-    branches:
-      - dev
-
   pull_request:
     branches:
       - dev
     paths:
-      - 'force-app/**'  
+      - "force-app/**"
     types:
       - opened
-      - closed
+      - reopened
+      - synchronize
+
+  push:
+    branches:
+      - dev
+    paths:
+      - "force-app/**"
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
-  build-salesforce:
-    name: Build & Validate Salesforce Code
-    uses: ./.github/workflows/template.yaml
+  validate:
+    name: Validate Salesforce Changes
+    if: github.event_name == 'pull_request'
+    uses: ./.github/workflows/validate.yaml
     with:
       environment: dev
-      deploy: ${{ github.event_name == 'push' }}
-    secrets:
+    secrets: &common-secrets
       ENCRYPTION_KEY_FILE: ${{ secrets.ENCRYPTION_KEY_FILE }}
       JWT_KEY_FILE: ${{ secrets.JWT_KEY_FILE }}
       DECRYPTION_KEY: ${{ secrets.DECRYPTION_KEY }}
       DECRYPTION_IV: ${{ secrets.DECRYPTION_IV }}
       CONSUMER_KEY: ${{ secrets.CONSUMER_KEY }}
       DEPLOYMENT_USER_USERNAME: ${{ secrets.DEPLOYMENT_USER_USERNAME }}
+
+  deploy:
+    name: Deploy Salesforce Changes
+    if: github.event_name == 'push'
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: dev
+    secrets: *common-secrets
