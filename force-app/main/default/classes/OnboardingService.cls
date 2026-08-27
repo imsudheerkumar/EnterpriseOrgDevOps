@@ -139,8 +139,8 @@ public with sharing class OnboardingService {
             if (completingIds.contains(req.Id) && openTaskCounts.containsKey(req.Id)) {
                 Integer openCount = openTaskCounts.get(req.Id);
                 req.addError(
-                    'Cannot mark as Completed: ' + openCount +
-                    ' task(s) are still open. Complete or reject all tasks first.'
+                    'Cannot mark as the request as Completed: ' + openCount +
+                    ' tasks are still open. Complete or reject all tasks first.'
                 );
             }
         }

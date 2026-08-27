@@ -87,6 +87,29 @@ jobs:
         run: |
           sf plugins install code-analyzer
 
+      # Install SFDX Git Delta
+      - name: Install SFDX Git Delta
+        run: echo 'Y' | sf plugins install sfdx-git-delta
+
+      # Before running create the folder called delta and then generate the delta file, we use the HEAD~1 to HEAD delta to get the latest changes and then we use the delta to deploy the changes to the Salesforce org
+      # This is to avoid the issue of the delta file being too large and causing the deploy to fail
+      # We also use the ignore-file .sgdignore to ignore the files that are not needed in the delta file
+      # We also use the ignore-whitespace to ignore the whitespace changes in the delta file
+      # We also use the api-version 66.0 to use the latest API version
+      # We also use the source-dir force-app/main/default to specify the source directory
+      # We also use the output-dir ./delta to specify the output directory
+      # We also use the generate-delta to generate the delta file
+      - name: Generate Delta File
+        run: |
+          mkdir delta
+          sf sgd source delta \
+          --from "HEAD~1" --to "HEAD" \
+          --generate-delta --ignore-file .sgdignore \
+          --output-dir ./delta --ignore-whitespace --api-version 66.0 \
+          --source-dir force-app/main/default
+          cat delta/package/package.xml
+          ls delta
+          
       # Run Code Analyzer
       - name: Run Salesforce Code Analyzer
         id: run-code-analyzer
@@ -111,58 +134,65 @@ jobs:
         run: |
           sf org display --target-org ${{vars.ORG_DEFAULT_ALIAS}} --json
 
-      # Validate to Salesforce ORG - With Specific Tests
+      # Before running the deploy or validate, we need to check if the PR is merged or not
+      # if PR is raised and not merged, then validate the changes to the Salesforce org
+      # if PR is merged, then deploy the changes to the Salesforce org
+      # Validate to Salesforce ORG - With Specific Tests, or Default Test Level or RunRelevantTests
       - name: "Validate to Salesforce ORG - With Specific Tests"
         if: ${{ env.apex_test_classes != 'No Apex classes found' && github.event.pull_request.merged == false && github.event_name == 'pull_request' }}
         run: |
           sf project deploy start --test-level RunSpecifiedTests \
             --tests ${{ env.apex_test_classes }} \
-            --source-dir force-app/main/default \
+            --source-dir delta/force-app/main/default \
             --target-org ${{ vars.ORG_DEFAULT_ALIAS }} --wait 45 \
             --dry-run --json 2>&1 | tee deploy-result.json
-
-      # Validate to Salesforce org - Default Test Level
+          
       - name: "Validate to Salesforce org - Default Test Level"
         if: ${{ env.apex_test_classes == 'No Apex classes found' && github.event.pull_request.merged == false && github.event_name == 'pull_request' }}
         run: |
           sf project deploy start \
-            --source-dir force-app/main/default \
+            --source-dir delta/force-app/main/default \
             --target-org ${{ vars.ORG_DEFAULT_ALIAS }} \
             --wait 45 \
             --dry-run --json 2>&1 | tee deploy-result.json
 
-      # Validate to Salesforce ORG - RunRelevantTests
       - name: "Validate to Salesforce ORG - RunRelevantTests"
         if: ${{ env.apex_test_classes == 'RunRelevantTests' && github.event.pull_request.merged == false && github.event_name == 'pull_request' }}
         run: |
           sf project deploy start --test-level RunRelevantTests \
-            --source-dir force-app/main/default  \
+            --source-dir delta/force-app/main/default  \
             --target-org ${{ vars.ORG_DEFAULT_ALIAS }} --wait 45 \
             --dry-run --json 2>&1 | tee deploy-result.json
 
-      # Deploy to Salesforce ORG - RunRelevantTests
+      # Enforce 80% code coverage
+      - name: "Enfore 80% code coverage"
+        if: ${{ github.event.pull_request.merged == false && github.event_name == 'pull_request' }}
+        run: |
+          python CODE_COVERAGE.py sfca_results.json
+
+      # Deploy to Salesforce ORG - RunRelevantTests or Default Test Level or With Specific Tests
+      # if PR is merged, then deploy the changes to the Salesforce org
       - name: "Deploy to Salesforce ORG - RunRelevantTests"
-        if: ${{ env.apex_test_classes == 'RunRelevantTests' }}
+        if: ${{ env.apex_test_classes == 'RunRelevantTests'  && github.event.pull_request.merged == true && github.event_name == 'pull_request'}}
         run: |
           sf project deploy start --test-level RunRelevantTests \
-            --source-dir force-app/main/default  \
-            --target-org ${{ vars.ORG_DEFAULT_ALIAS }} --wait 45
+            --source-dir delta/force-app/main/default  \
+            --target-org ${{ vars.ORG_DEFAULT_ALIAS }} \
+            --ignore-conflicts --wait 45
 
-      # Deploy to Salesforce org - Default Test Level
       - name: "Deploy to Salesforce org - Default Test Level"
-        #if: ${{ github.event.pull_request.merged == true && github.event.action == 'closed' && env.apex_classes == 'No Apex classes found' && (env.validation_id == '' || env.deploy_done == 'false') }}
-        if: ${{ env.apex_test_classes == 'No Apex classes found' }}
+        if: ${{ env.apex_test_classes == 'No Apex classes found' && github.event.pull_request.merged == true && github.event_name == 'pull_request'}}
         run: |
           sf project deploy start \
-            --source-dir force-app/main/default \
+            --source-dir delta/force-app/main/default \
             --target-org ${{ vars.ORG_DEFAULT_ALIAS }} \
-            --wait 45
+            --ignore-conflicts --wait 45
 
-      # Deploy to Salesforce ORG - With Specific Tests
       - name: "Deploy to Salesforce ORG - With Specific Tests"
-        if: ${{ env.apex_test_classes != 'No Apex classes found' }}
+        if: ${{ env.apex_test_classes != 'No Apex classes found' && github.event.pull_request.merged == true && github.event_name == 'pull_request'}}
         run: |
           sf project deploy start --test-level RunSpecifiedTests \
             --tests ${{ env.apex_test_classes }} \
-            --source-dir force-app/main/default \
-            --target-org ${{ vars.ORG_DEFAULT_ALIAS }} --wait 45
+            --source-dir delta/force-app/main/default \
+            --target-org ${{ vars.ORG_DEFAULT_ALIAS }} \
+            --ignore-conflicts --wait 45
