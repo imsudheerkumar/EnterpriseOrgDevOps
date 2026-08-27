@@ -1,0 +1,125 @@
+name: Salesforce Validation Pipeline
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+    secrets:
+      ENCRYPTION_KEY_FILE:
+        required: true
+
+      JWT_KEY_FILE:
+        required: true
+
+      DECRYPTION_KEY:
+        required: true
+
+      DECRYPTION_IV:
+        required: true
+
+      CONSUMER_KEY:
+        required: true
+
+      DEPLOYMENT_USER_USERNAME:
+        required: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+
+    steps:
+      # Checkout repository
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Read PR details
+      - name: Read PR Details and Extract Apex Test Classes
+        run: |
+          echo "${{ github.event.pull_request.body }}" > pr_body.txt
+          python READ_PRBODY.py > output.txt
+          cat output.txt
+          echo "apex_test_classes=$(cat output.txt)" >> $GITHUB_ENV
+
+      # Run common Salesforce setup which calls the Salesforce Common Setup action
+
+      - name: Run Common Salesforce Setup Action
+        uses: ./.github/actions/salesforce-common
+        with:
+          node_version: ${{ vars.NODE_VERSION }}
+          java_version: ${{ vars.JAVA_VERSION }}
+          python_version: ${{ vars.PYTHON_VERSION }}
+          sf_cli_version: ${{ vars.SF_CLI_VERSION }}
+          encryption_key_file: ${{ secrets.ENCRYPTION_KEY_FILE }}
+          jwt_key_file: ${{ secrets.JWT_KEY_FILE }}
+          decryption_key: ${{ secrets.DECRYPTION_KEY }}
+          decryption_iv: ${{ secrets.DECRYPTION_IV }}
+          consumer_key: ${{ secrets.CONSUMER_KEY }}
+          deployment_username: ${{ secrets.DEPLOYMENT_USER_USERNAME }}
+          org_alias: ${{ vars.ORG_DEFAULT_ALIAS }}
+          instance_url: ${{ vars.HUB_LOGIN_URL }}
+          delta_from: HEAD~1
+          delta_to: HEAD
+
+      # Install Salesforce Code Analyzer
+      - name: Install Salesforce Code Analyzer
+        run: |
+          sf plugins install code-analyzer
+
+      # Run Salesforce Code Analyzer
+      - name: Run Salesforce Code Analyzer
+        id: run-code-analyzer
+        uses: forcedotcom/run-code-analyzer@v2
+        with:
+          run-arguments: --workspace . --view detail --output-file sfca_results.html --output-file sfca_results.json
+          results-artifact-name: salesforce-code-analyzer-results
+          github-token: ${{ github.token }}
+
+      # Validate with specific tests
+      - name: Validate with Specific Tests
+        if: |
+          env.apex_test_classes != 'No Apex classes found' &&
+          env.apex_test_classes != 'RunRelevantTests'
+        run: |
+          sf project deploy start \
+            --test-level RunSpecifiedTests \
+            --tests "${{ env.apex_test_classes }}" \
+            --source-dir delta/force-app/main/default \
+            --target-org "${{ vars.ORG_DEFAULT_ALIAS }}" \
+            --wait 45 \
+            --dry-run \
+            --json 2>&1 | tee deploy-result.json
+
+      # Validate with default test level
+
+      - name: Validate with Default Test Level
+        if: env.apex_test_classes == 'No Apex classes found'
+        run: |
+          sf project deploy start \
+            --source-dir delta/force-app/main/default \
+            --target-org "${{ vars.ORG_DEFAULT_ALIAS }}" \
+            --wait 45 \
+            --dry-run \
+            --json 2>&1 | tee deploy-result.json
+
+      # Validate with RunRelevantTests
+
+      - name: Validate with RunRelevantTests
+        if: env.apex_test_classes == 'RunRelevantTests'
+        run: |
+          sf project deploy start \
+            --test-level RunRelevantTests \
+            --source-dir delta/force-app/main/default \
+            --target-org "${{ vars.ORG_DEFAULT_ALIAS }}" \
+            --wait 45 \
+            --dry-run \
+            --json 2>&1 | tee deploy-result.json
+
+      # Enforce code coverage
+      - name: Enforce 80 Percent Code Coverage
+        run: |
+          python CODE_COVERAGE.py sfca_results.json

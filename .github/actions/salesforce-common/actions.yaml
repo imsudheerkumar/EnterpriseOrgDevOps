@@ -1,0 +1,130 @@
+name: Salesforce Common Setup
+
+description: Common Salesforce CI/CD setup
+
+inputs:
+  sf_cli_version:
+    required: true
+  node_version:
+    required: true
+  java_version:
+    required: true
+  python_version:
+    required: true
+  encryption_key_file:
+    required: true
+  jwt_key_file:
+    required: true
+  decryption_key:
+    required: true
+  decryption_iv:
+    required: true
+  consumer_key:
+    required: true
+  deployment_username:
+    required: true
+  org_alias:
+    required: true
+  instance_url:
+    required: true
+  delta_from:
+    required: true
+  delta_to:
+    required: true
+
+runs:
+  using: composite
+
+  steps:
+
+    # Setup Node.js
+    - name: Setup Node.js
+      uses: actions/setup-node@v5
+      with:
+        node-version: ${{ inputs.node_version }}
+
+    # Setup Java
+    - name: Setup Java
+      uses: actions/setup-java@v5
+      with:
+        java-version: ${{ inputs.java_version }}
+        distribution: zulu
+
+    # Setup Python
+    - name: Setup Python
+      uses: actions/setup-python@v6
+      with:
+        python-version: ${{ inputs.python_version }}
+
+    # Install Salesforce CLI
+    - name: Install Salesforce CLI
+      shell: bash
+      run: |
+        npm install --global @salesforce/cli@${{ inputs.sf_cli_version }}
+
+    # Check Salesforce CLI version
+    - name: Check Salesforce CLI Version
+      shell: bash
+      run: |
+        sf --version
+
+    # Install SFDX Git Delta
+
+    - name: Install SFDX Git Delta
+      shell: bash
+      run: |
+        echo "Y" | sf plugins install sfdx-git-delta
+
+    # Generate delta file
+    - name: Generate Delta File
+      shell: bash
+      run: |
+        mkdir -p delta
+
+        sf sgd source delta \
+          --from "${{ inputs.delta_from }}" \
+          --to "${{ inputs.delta_to }}" \
+          --generate-delta \
+          --ignore-file .sgdignore \
+          --output-dir ./delta \
+          --ignore-whitespace \
+          --api-version 66.0 \
+          --source-dir force-app/main/default
+
+        cat delta/package/package.xml
+
+        ls delta
+
+    # Decrypt JWT key
+    - name: Decrypt JWT Key from encrypted file
+      shell: bash
+      run: |
+        openssl enc \
+          -nosalt \
+          -aes-256-cbc \
+          -d \
+          -in "${{ inputs.encryption_key_file }}" \
+          -out "${{ inputs.jwt_key_file }}" \
+          -base64 \
+          -K "${{ inputs.decryption_key }}" \
+          -iv "${{ inputs.decryption_iv }}"
+
+    # Authenticate with Salesforce
+    - name: Authenticate Salesforce with JWT
+      shell: bash
+      run: |
+        sf org login jwt \
+          --client-id "${{ inputs.consumer_key }}" \
+          --jwt-key-file "${{ inputs.jwt_key_file }}" \
+          --username "${{ inputs.deployment_username }}" \
+          --set-default \
+          --alias "${{ inputs.org_alias }}" \
+          --instance-url "${{ inputs.instance_url }}"
+
+    # Verify Salesforce org authentication
+    - name: Verify Salesforce Org Authentication
+      shell: bash
+      run: |
+        sf org display \
+          --target-org "${{ inputs.org_alias }}" \
+          --json
