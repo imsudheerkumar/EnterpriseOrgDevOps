@@ -28,7 +28,7 @@ jobs:
   validate:
     name: Validate Salesforce Changes
     if: github.event_name == 'pull_request'
-    uses: ./.github/workflows/validate.yml
+    uses: ./.github/workflows/validate.yaml
     with:
       environment: production
     secrets: &common-secrets
@@ -43,7 +43,7 @@ jobs:
     name: Deploy Salesforce Changes
 
     if: github.event_name == 'push'
-    uses: ./.github/workflows/deploy.yml
+    uses: ./.github/workflows/deploy.yaml
     with:
       environment: production
 

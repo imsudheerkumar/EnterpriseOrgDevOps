@@ -42,7 +42,7 @@ jobs:
   deploy:
     name: Deploy Salesforce Changes
     if: github.event_name == 'push'
-    uses: ./.github/workflows/deploy.yml
+    uses: ./.github/workflows/deploy.yaml
     with:
       environment: dev
     secrets: *common-secrets
