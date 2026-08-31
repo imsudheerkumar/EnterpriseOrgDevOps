@@ -66,29 +66,23 @@ jobs:
 
       # Send Slack Notification on Success
       - name: Send Slack Notification
-        if: success()
-        uses: slackapi/slack-github-action@v4.0.0
-        with:
-          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
-          webhook-type: incoming-webhook
-          payload: |
-            text: "Deployment successful for ${{ inputs.environment }}"
-            blocks:
-              - type: "header"
-                text:
-                  type: "plain_text"
-                  text: "Deployment successful for ${{ inputs.environment }}"
-              - type: "section"
-                fields:
-                  - type: "mrkdwn"
-                    text: "*Environment*\n${{ inputs.environment }}"
-                  - type: "mrkdwn"
-                    text: "*Deployment Type*\nDelta"
-                  - type: "mrkdwn"
-                    text: "*Deployment Status*\nSuccess"
-                  - type: "mrkdwn"
-                    text: "*Deployment Time*\n${{ github.event.head_commit.timestamp }}"
-                  - type: "mrkdwn"
-                    text: "*Deployment User*\n${{ github.event.head_commit.author.name }}"
-                  - type: "mrkdwn"
-                    text: "*Deployment Commit*\n`${{ github.event.head_commit.id }}`" 
+        if: always()
+        run: |
+          STATUS_EMOJI="${{ job.status == 'success' && '✅' || '❌' }}"
+          curl -X POST "${{ secrets.SLACK_WEBHOOK_URL }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "text": "'"${STATUS_EMOJI} *${{ github.workflow }}* — ${{ job.status }}"'",
+              "attachments": [
+                {
+                  "color": "'"${{ job.status == 'success' && 'good' || 'danger' }}"'",
+                  "fields": [
+                    { "title": "Repository", "value": "${{ github.repository }}", "short": true },
+                    { "title": "Branch",     "value": "${{ github.ref_name }}",   "short": true },
+                    { "title": "Triggered by", "value": "${{ github.actor }}",   "short": true },
+                    { "title": "Event",      "value": "${{ github.event_name }}", "short": true },
+                    { "title": "Run URL",    "value": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}", "short": false }
+                  ]
+                }
+              ]
+            }'

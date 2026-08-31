@@ -25,6 +25,12 @@ on:
       DEPLOYMENT_USER_USERNAME:
         required: true
 
+      SLACK_WEBHOOK_URL:
+        required: true
+
+      SONAR_TOKEN:
+        required: true
+
 jobs:
   validate:
     runs-on: ubuntu-latest
@@ -78,6 +84,22 @@ jobs:
           run-arguments: --workspace . --view detail --output-file sfca_results.html --output-file sfca_results.json
           results-artifact-name: salesforce-code-analyzer-results
           github-token: ${{ github.token }}
+
+      # Run SonarQube Scan
+      - name: SonarQube Scan
+        id: run-sonarqube-scan
+        uses: SonarSource/sonarqube-scan-action@v8.2.1
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.verbose=true
+            -Dsonar.language=apex
+            -Dsonar.sourceEncoding=UTF-8
+            -Dsonar.coverage.inclusions=**/*Test.cls
+            -Dsonar.exclusions=**/.cmp,**/force-app/**/fflib_.cls,**/.yml,**/.js,**/.xml,**/.css,**/.html,**/.woff2,**/.woff,**/.auradoc,**/*.svg,force-app/main/default/staticresources/**
+
+
 
       # Validate with specific tests
       - name: Validate with Specific Tests

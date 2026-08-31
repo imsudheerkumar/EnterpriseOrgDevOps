@@ -8,9 +8,7 @@
  *              Each batch chunk is a separate transaction with its own email allowance.
  *              Implements Database.Stateful so the total processed count is preserved
  *              across chunks and visible in the finish() debug log. Change to 5000
- *              ADDED VIA NEW BRANCHING APPROACH
- *              ADDED VIA NEW BRANCHING APPROACH
- *              ADDED VIA NEW BRANCHING APPROACH
+ *              ADDED VIA NEW BRANCHING APPROACH12122323232323
  */
 public with sharing class OnboardingReminderBatch
         implements Database.Batchable<SObject>, Database.Stateful {
