@@ -22,6 +22,8 @@ on:
         required: true
       SLACK_WEBHOOK_URL:
         required: true
+      SONAR_TOKEN:
+        required: true
 
 jobs:
   deploy:
