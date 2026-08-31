@@ -25,6 +25,9 @@ on:
       DEPLOYMENT_USER_USERNAME:
         required: true
 
+      SLACK_WEBHOOK_URL:
+        required: true
+
 jobs:
   validate:
     runs-on: ubuntu-latest
