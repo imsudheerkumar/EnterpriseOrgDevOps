@@ -38,7 +38,6 @@ jobs:
       DECRYPTION_IV: ${{ secrets.DECRYPTION_IV }}
       CONSUMER_KEY: ${{ secrets.CONSUMER_KEY }}
       DEPLOYMENT_USER_USERNAME: ${{ secrets.DEPLOYMENT_USER_USERNAME }}
-      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
   deploy:
     name: Deploy Salesforce Changes
