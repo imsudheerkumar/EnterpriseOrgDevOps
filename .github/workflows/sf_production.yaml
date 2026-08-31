@@ -39,6 +39,7 @@ jobs:
       CONSUMER_KEY: ${{ secrets.CONSUMER_KEY }}
       DEPLOYMENT_USER_USERNAME: ${{ secrets.DEPLOYMENT_USER_USERNAME }}
       SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   deploy:
     name: Deploy Salesforce Changes
