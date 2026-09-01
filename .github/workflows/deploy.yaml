@@ -69,22 +69,70 @@ jobs:
       # Send Slack Notification on Success
       - name: Send Slack Notification
         if: always()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          STATUS: ${{ job.status }}
+          WORKFLOW: ${{ github.workflow }}
+          REPOSITORY: ${{ github.repository }}
+          BRANCH: ${{ github.ref_name }}
+          ACTOR: ${{ github.actor }}
+          EVENT: ${{ github.event_name }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          STATUS_EMOJI="${{ job.status == 'success' && '✅' || '❌' }}"
-          curl -X POST "${{ secrets.SLACK_WEBHOOK_URL }}" \
-            -H "Content-Type: application/json" \
-            -d '{
-              "text": "'"${STATUS_EMOJI} *${{ github.workflow }}* — ${{ job.status }}"'",
-              "attachments": [
+          if [ "$STATUS" = "success" ]; then
+            STATUS_EMOJI="✅"
+            STATUS_COLOR="good"
+          else
+            STATUS_EMOJI="❌"
+            STATUS_COLOR="danger"
+          fi
+
+          PAYLOAD=$(jq -n \
+            --arg emoji "$STATUS_EMOJI" \
+            --arg workflow "$WORKFLOW" \
+            --arg status "$STATUS" \
+            --arg color "$STATUS_COLOR" \
+            --arg repository "$REPOSITORY" \
+            --arg branch "$BRANCH" \
+            --arg actor "$ACTOR" \
+            --arg event "$EVENT" \
+            --arg run_url "$RUN_URL" \
+            '{
+              text: ($emoji + " *" + $workflow + "* — " + $status),
+              attachments: [
                 {
-                  "color": "'"${{ job.status == 'success' && 'good' || 'danger' }}"'",
-                  "fields": [
-                    { "title": "Repository", "value": "${{ github.repository }}", "short": true },
-                    { "title": "Branch",     "value": "${{ github.ref_name }}",   "short": true },
-                    { "title": "Triggered by", "value": "${{ github.actor }}",   "short": true },
-                    { "title": "Event",      "value": "${{ github.event_name }}", "short": true },
-                    { "title": "Run URL",    "value": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}", "short": false }
+                  color: $color,
+                  fields: [
+                    {
+                      title: "Repository",
+                      value: $repository,
+                      short: true
+                    },
+                    {
+                      title: "Branch",
+                      value: $branch,
+                      short: true
+                    },
+                    {
+                      title: "Triggered by",
+                      value: $actor,
+                      short: true
+                    },
+                    {
+                      title: "Event",
+                      value: $event,
+                      short: true
+                    },
+                    {
+                      title: "Run URL",
+                      value: $run_url,
+                      short: false
+                    }
                   ]
                 }
               ]
-            }'
+            }')
+
+          curl -X POST "$SLACK_WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            --data "$PAYLOAD"
