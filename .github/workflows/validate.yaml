@@ -147,6 +147,19 @@ jobs:
       - name: Enforce 80 Percent Code Coverage
         run: |
           python CODE_COVERAGE.py sfca_results.json
+
+        
+      # Validate Pre-Destructive Changes in Salesforce
+      - name: "Validate Pre-Destructive Changes in Salesforce ${{ inputs.envionment }}"
+        # PR is Raised and it's in Open Status --> Validate the Changes
+        if: ${{ github.event_name == 'pull_request' && github.event.action != 'closed' && github.event.pull_request.merged == false}}
+        run: |
+          if grep -q '<types>' destructiveChanges/destructiveChanges.xml ; then
+            echo "---- Validate Pre-Destructive Changes in Salesforce ----"
+            sf project deploy start --target-org ${{ env.ORG_DEFAULT_ALIAS }} --pre-destructive-changes destructiveChanges/destructiveChanges.xml --manifest destructiveChanges/package.xml --dry-run --wait 45
+          else
+            echo "---- No changes to validate ----"
+          fi
     
       # Post Validation Job ID as PR Comment
       - name: Post Validation Job ID as PR Comment
